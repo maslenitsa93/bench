@@ -242,7 +242,7 @@ public:
 
 public:
 	BTree(int b) : bs() {
-		null = (T)NULL;
+		//null = (T)NULL; // maslenitsa93: ???
 		b += (b+1)%2;
 		this->b = b;
 		B = b/2;
