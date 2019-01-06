@@ -52,6 +52,30 @@ static void BM_BoostTreeAdd100(benchmark::State& state) {
 }
 BENCHMARK(BM_BoostTreeAdd100);
 
+// Upsert
+
+static void BM_GoogleTreeUpsert100(benchmark::State& state) {
+    for (auto _ : state) {
+        for (int i = 1; i <= 100; i++) {
+            foo f;
+            f.bar = i * 10;
+            google_tree[std::to_string(i)] = f;
+        }
+    }
+}
+BENCHMARK(BM_GoogleTreeUpsert100);
+
+static void BM_BoostTreeUpsert100(benchmark::State& state) {
+    for (auto _ : state) {
+        for (int i = 1; i <= 100; i++) {
+            foo f;
+            f.bar = i * 10;
+            boost_tree.put(std::to_string(i), f);
+        }
+    }
+}
+BENCHMARK(BM_BoostTreeUpsert100);
+
 // Lookup
 
 static void BM_GoogleTreeLookup100(benchmark::State& state) {
