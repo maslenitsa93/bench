@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-add_executable(bench main.cpp BTree.cpp array.cpp BlockStore.cpp ArrayStack.cpp utils.cpp)
+add_executable(bench main.cpp)
 
 target_link_libraries(bench Threads::Threads benchmark)
 
