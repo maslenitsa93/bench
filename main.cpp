@@ -72,4 +72,24 @@ static void BM_BoostTreeLookup100(benchmark::State& state) {
 }
 BENCHMARK(BM_BoostTreeLookup100);
 
+// Remove
+
+static void BM_GoogleTreeRemove100(benchmark::State& state) {
+    for (auto _ : state) {
+        for (int i = 1; i <= 100; i++) {
+            google_tree.erase(std::to_string(i));
+        }
+    }
+}
+BENCHMARK(BM_GoogleTreeRemove100);
+
+static void BM_BoostTreeRemove100(benchmark::State& state) {
+    for (auto _ : state) {
+        for (int i = 1; i <= 100; i++) {
+            boost_tree.erase(std::to_string(i));
+        }
+    }
+}
+BENCHMARK(BM_BoostTreeRemove100);
+
 BENCHMARK_MAIN();
