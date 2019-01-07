@@ -1,5 +1,7 @@
 #include <benchmark/benchmark.h>
+#include <boost/smart_ptr/detail/spinlock.hpp>
 #include <iostream>
+#include <future>
 #include "splaytree.h"
 #include "rbtree.h"
 
@@ -189,6 +191,38 @@ auto BM_RbTreeRead = [](benchmark::State& state, auto count) {
     }
 };
 
+// Multi-threaded
+
+splay_tree<int> sp_tree_0;
+
+boost::detail::spinlock lock;
+
+auto BM_SwSr = [](benchmark::State& state, auto count, bool log_read) {
+    for (auto _ : state) {
+        if (log_read) state.PauseTiming();
+
+        if (state.thread_index == 0) {
+            for (auto i = 1; i < count; i++) {
+                std::lock_guard<boost::detail::spinlock> guard(lock);
+                sp_tree_0.insert(i);
+            }
+            if (log_read) state.ResumeTiming();
+            continue;
+        }
+
+        if (log_read) state.ResumeTiming();
+
+        if (!log_read) state.PauseTiming();
+
+        for (auto i = 1; i < count; i++) {
+            std::lock_guard<boost::detail::spinlock> guard(lock);
+            sp_tree_0.find(i);
+        }
+
+        if (!log_read) state.ResumeTiming();
+    }
+};
+
 int main(int argc, char** argv) {
     srand(time(NULL));
 
@@ -198,6 +232,9 @@ int main(int argc, char** argv) {
     LEAF->right = NULL;
     LEAF->key = 0;
 
+    benchmark::RegisterBenchmark("BM_SwSr_sw", BM_SwSr, 1000, false)->Threads(2);
+    benchmark::RegisterBenchmark("BM_SwSr_sr", BM_SwSr, 1000, true)->Threads(2);
+/*
     for (auto i = 100; i <= 1000; i+=100) {
         benchmark::RegisterBenchmark(std::string("BM_SplayTreeInsert_").append(std::to_string(i)).c_str(), BM_SplayTreeInsert, i);
         benchmark::RegisterBenchmark(std::string("BM_RbTreeInsert_").append(std::to_string(i)).c_str(), BM_RbTreeInsert, i);
@@ -217,6 +254,7 @@ int main(int argc, char** argv) {
         benchmark::RegisterBenchmark(std::string("BM_SplayTreeRead_").append(std::to_string(i)).c_str(), BM_SplayTreeRead, i);
         benchmark::RegisterBenchmark(std::string("BM_RbTreeRead_").append(std::to_string(i)).c_str(), BM_RbTreeRead, i);
     }
+*/
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
