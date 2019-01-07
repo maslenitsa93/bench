@@ -329,3 +329,13 @@ void delete_case6(struct node* n)
   rotate_right(n->parent);
  }
 }
+
+node* bst_find(struct node* root, int key) {
+ node* z = root;
+ while (z) {
+  if (key > z->key) z = z->right;
+  else if (key < z->key) z = z->left;
+  else return z;
+ }
+ return nullptr;
+}
