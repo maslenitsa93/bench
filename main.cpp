@@ -1,134 +1,96 @@
 #include <benchmark/benchmark.h>
-#include <boost/property_tree/ptree.hpp>
-#include "btree_map.h"
-namespace pt = boost::property_tree;
-
-struct foo {
-    foo() {
-    }
-
-    int bar = 0;
-};
-
-std::ostream& operator<<(std::ostream& os, const foo& f) {
-    os << f.bar;
-    return os;
-}
-
-std::istream& operator>>(std::istream& is, foo& f) {
-    is >> f.bar;
-    return is;
-}
-
-bool operator==(const foo& lhs, const foo& rhs) {
-    return lhs.bar == rhs.bar;
-}
+#include "splaytree.h"
+#include "rbtree.h"
 
 
-btree::btree_map<std::string, foo> google_tree;
-pt::ptree boost_tree;
+// Insert
 
-// Add
-
-auto BM_GoogleTreeAdd = [](benchmark::State& state, auto count) {
+auto BM_SplayTreeInsert = [](benchmark::State& state, auto count) {
     for (auto _ : state) {
-        for (int i = 1; i <= count; i++) {
-            foo f;
-            f.bar = i;
-            google_tree[std::to_string(i)] = f;
+        splay_tree<int> sp_tree;
+        for (int i = 1; i < count; i++) {
+            sp_tree.insert(i);
         }
     }
 };
 
-auto BM_BoostTreeAdd = [](benchmark::State& state, auto count) {
+auto BM_RbTreeInsert = [](benchmark::State& state, auto count) {
     for (auto _ : state) {
-        for (int i = 1; i <= count; i++) {
-            foo f;
-            f.bar = i;
-            boost_tree.put(std::to_string(i), f);
+
+        struct node* rb_root = NULL;
+
+        struct node *z;
+        z = (node*)malloc(sizeof(struct node));
+        z->key = 99999;
+        z->left = NULL;
+        z->right = NULL;
+        z->parent = NULL;
+        z->color = RED;
+        rb_root = insert(rb_root, z);
+
+        for (int i = 1; i < count; i++) {
+            struct node* nod = (node*)malloc(sizeof(struct node));
+            nod->key = i;
+            rb_root = insert(rb_root, nod);
         }
     }
 };
 
 // Upsert
 
-auto BM_GoogleTreeUpsert = [](benchmark::State& state, auto count) {
+auto BM_SplayTreeUpsert = [](benchmark::State& state, auto count) {
     for (auto _ : state) {
-        for (int i = 1; i <= count; i++) {
-            foo f;
-            f.bar = i * 10;
-            google_tree[std::to_string(i)] = f;
+        splay_tree<int> sp_tree;
+        for (int i = 1; i < count; i++) { // TODO do not count bench
+            sp_tree.insert(i);
+        }
+        for (int i = 1; i < count; i++) {
+            sp_tree.insert(i);
         }
     }
 };
 
-auto BM_BoostTreeUpsert = [](benchmark::State& state, auto count) {
+auto BM_RbTreeUpsert = [](benchmark::State& state, auto count) {
     for (auto _ : state) {
-        for (int i = 1; i <= count; i++) {
-            foo f;
-            f.bar = i * 10;
-            boost_tree.put(std::to_string(i), f);
+
+        struct node* rb_root = NULL;
+
+        struct node *z;
+        z = (node*)malloc(sizeof(struct node));
+        z->key = 99999;
+        z->left = NULL;
+        z->right = NULL;
+        z->parent = NULL;
+        z->color = RED;
+        rb_root = insert(rb_root, z);
+
+        for (int i = 1; i < count; i++) { // TODO do not count bench
+            struct node* nod = (node*)malloc(sizeof(struct node));
+            nod->key = i;
+            rb_root = insert(rb_root, nod);
         }
-    }
-};
 
-// Lookup
-
-auto BM_GoogleTreeLookup = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-        for (int i = 1; i <= count; i++) {
-            google_tree.find(std::to_string(i));
-        }
-    }
-};
-
-auto BM_BoostTreeLookup = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-        for (int i = 1; i <= count; i++) {
-            boost_tree.find(std::to_string(i));
-        }
-    }
-};
-
-// Remove
-
-auto BM_GoogleTreeRemove = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-        for (int i = 1; i <= count; i++) {
-            google_tree.erase(std::to_string(i));
-        }
-    }
-};
-
-auto BM_BoostTreeRemove = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-        for (int i = 1; i <= count; i++) {
-            boost_tree.erase(std::to_string(i));
+        for (int i = 1; i < count; i++) {
+            struct node* nod = (node*)malloc(sizeof(struct node));
+            nod->key = i;
+            rb_root = insert(rb_root, nod);
         }
     }
 };
 
 int main(int argc, char** argv) {
-    for (auto i = 100; i <= 1000; i+=100) {
-        benchmark::RegisterBenchmark(std::string("BM_GoogleTreeAdd_").append(std::to_string(i)).c_str(), BM_GoogleTreeAdd, i);
-        benchmark::RegisterBenchmark(std::string("BM_BoostTreeAdd_").append(std::to_string(i)).c_str(), BM_BoostTreeAdd, i);
-    }
+    srand(time(NULL));
 
-    for (auto i = 100; i <= 1000; i+=100) {
-        benchmark::RegisterBenchmark(std::string("BM_GoogleTreeUpsert_").append(std::to_string(i)).c_str(), BM_GoogleTreeUpsert, i);
-        benchmark::RegisterBenchmark(std::string("BM_BoostTreeUpsert_").append(std::to_string(i)).c_str(), BM_BoostTreeUpsert, i);
-    }
+    LEAF = (node*)malloc(sizeof(struct node));
+    LEAF->color = BLACK;
+    LEAF->left = NULL;
+    LEAF->right = NULL;
+    LEAF->key = 0;
 
-    for (auto i = 100; i <= 1000; i+=100) {
-        benchmark::RegisterBenchmark(std::string("BM_GoogleTreeLookup_").append(std::to_string(i)).c_str(), BM_GoogleTreeLookup, i);
-        benchmark::RegisterBenchmark(std::string("BM_BoostTreeLookup_").append(std::to_string(i)).c_str(), BM_BoostTreeLookup, i);
-    }
-
-    for (auto i = 100; i <= 1000; i+=100) {
-        benchmark::RegisterBenchmark(std::string("BM_GoogleTreeRemove_").append(std::to_string(i)).c_str(), BM_GoogleTreeRemove, i);
-        benchmark::RegisterBenchmark(std::string("BM_BoostTreeRemove_").append(std::to_string(i)).c_str(), BM_BoostTreeRemove, i);
-    }
-
+    benchmark::RegisterBenchmark(std::string("BM_SplayTreeInsert_").append(std::to_string(100)).c_str(), BM_SplayTreeInsert, 1000);
+    benchmark::RegisterBenchmark(std::string("BM_RbTreeInsert_").append(std::to_string(100)).c_str(), BM_RbTreeInsert, 1000);
+    benchmark::RegisterBenchmark(std::string("BM_SplayTreeUpsert_").append(std::to_string(100)).c_str(), BM_SplayTreeUpsert, 1000);
+    benchmark::RegisterBenchmark(std::string("BM_RbTreeUpsert_").append(std::to_string(100)).c_str(), BM_RbTreeUpsert, 1000);
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
     return 0;
