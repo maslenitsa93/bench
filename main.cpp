@@ -1,7 +1,5 @@
 #include <benchmark/benchmark.h>
-#include <boost/smart_ptr/detail/spinlock.hpp>
 #include <iostream>
-#include <future>
 #include "splaytree.h"
 #include "rbtree.h"
 
@@ -195,15 +193,12 @@ auto BM_RbTreeRead = [](benchmark::State& state, auto count) {
 
 splay_tree<int> sp_tree_0;
 
-boost::detail::spinlock lock;
-
 auto BM_SwSr = [](benchmark::State& state, auto count, bool log_read) {
     for (auto _ : state) {
         if (log_read) state.PauseTiming();
 
         if (state.thread_index == 0) {
             for (auto i = 1; i < count; i++) {
-                std::lock_guard<boost::detail::spinlock> guard(lock);
                 sp_tree_0.insert(i);
             }
             if (log_read) state.ResumeTiming();
@@ -215,7 +210,6 @@ auto BM_SwSr = [](benchmark::State& state, auto count, bool log_read) {
         if (!log_read) state.PauseTiming();
 
         for (auto i = 1; i < count; i++) {
-            std::lock_guard<boost::detail::spinlock> guard(lock);
             sp_tree_0.find(i);
         }
 

@@ -1,4 +1,6 @@
 #include <functional>
+#include <boost/smart_ptr/detail/spinlock.hpp>
+#include <future>
 
 #ifndef SPLAY_TREE
 #define SPLAY_TREE
@@ -13,6 +15,7 @@ private:
     node *left, *right;
     node *parent;
     T key;
+    boost::detail::spinlock lock;
     node( const T& init = T( ) ) : left( nullptr ), right( nullptr ), parent( nullptr ), key( init ) { }
     ~node( ) {
 
@@ -99,6 +102,9 @@ public:
     }
     
     z = new node( key );
+
+    std::unique_lock<boost::detail::spinlock> guard(z->lock);
+
     z->parent = p;
     
     if( !p ) root = z;
