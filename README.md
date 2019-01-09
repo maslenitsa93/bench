@@ -98,20 +98,20 @@ Searcher (mutex): 1.657883
 
 ```
 $ ./bench --writers=2 --readers=2 --lock-type=shared
-Remover (shared mutex): 0.605845
-Searcher (shared mutex): 0.607761
-Remover (shared mutex): 0.625172
-Searcher (shared mutex): 0.617621
+Searcher (shared mutex): 1.569397
+Remover (shared mutex): 1.580394
+Remover (shared mutex): 1.582952
+Searcher (shared mutex): 1.583127
 $ ./bench --writers=2 --readers=2 --lock-type=shared
-Remover (shared mutex): 0.749466
-Remover (shared mutex): 0.766117
-Searcher (shared mutex): 0.768512
-Searcher (shared mutex): 0.768804
+Remover (shared mutex): 0.731160
+Searcher (shared mutex): 0.739865
+Remover (shared mutex): 0.741116
+Searcher (shared mutex): 0.738870
 $ ./bench --writers=2 --readers=2 --lock-type=shared
-Remover (shared mutex): 0.895521
-Searcher (shared mutex): 0.909898
-Remover (shared mutex): 0.914262
-Searcher (shared mutex): 0.912446
+Remover (shared mutex): 1.590418
+Searcher (shared mutex): 1.592430
+Searcher (shared mutex): 1.597184
+Remover (shared mutex): 1.597818
 ```
 
 ```
