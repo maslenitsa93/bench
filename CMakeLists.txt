@@ -5,8 +5,10 @@ set(CMAKE_CXX_STANDARD 14)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-add_executable(bench main.cpp)
+add_executable(bench main.cpp binary_tree.cpp)
 
-target_link_libraries(bench Threads::Threads benchmark)
+find_package(Boost COMPONENTS system thread REQUIRED)
+
+target_link_libraries(bench Threads::Threads benchmark ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY})
 
 set_target_properties(bench PROPERTIES CXX_STANDARD 14)

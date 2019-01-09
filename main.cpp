@@ -1,256 +1,140 @@
-#include <benchmark/benchmark.h>
 #include <iostream>
-#include "splaytree.h"
-#include "rbtree.h"
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <boost/thread/shared_mutex.hpp>
+#include "binary_tree.h"
 
-void fill_splay(splay_tree<int>& sp_tree, auto count) {
-    for (auto i = 1; i < count; i++) {
-        sp_tree.insert(i);
+using boost::shared_mutex;
+using boost::shared_lock;
+using boost::upgrade_lock;
+using boost::upgrade_to_unique_lock;    
+
+binary_tree bt;
+std::mutex bt_mutex;
+shared_mutex bt_shared_mutex;
+
+#define ELAPSE_START \
+    struct timespec start, finish; \
+    double elapsed; \
+    clock_gettime(CLOCK_MONOTONIC, &start)
+
+#define ELAPSE_END(PRINT_TITLE) \
+    clock_gettime(CLOCK_MONOTONIC, &finish); \
+    elapsed = (finish.tv_sec - start.tv_sec); \
+    elapsed += double(finish.tv_nsec - start.tv_nsec) / 1000000000; \
+    if (PRINT_TITLE) { \
+        printf("%s: %f\n", PRINT_TITLE, elapsed); \
     }
+
+void inserter(const char* log) {
+    ELAPSE_START;
+
+    for (int i = 1; i <= 10000; i++) {
+        bt_mutex.lock();
+        bt.insert(i);
+        bt_mutex.unlock();
+    }
+
+    ELAPSE_END(log);
 }
 
-void fill_rb(struct node* rb_root, auto count) {
-    for (auto i = 1; i < count; i++) {
-        struct node* nod = (node*)malloc(sizeof(struct node));
-        nod->key = i;
-        rb_root = insert(rb_root, nod);
+void inserter_shared() {
+    ELAPSE_START;
+
+    for (int i = 1; i <= 10000; i++) {
+        upgrade_lock<shared_mutex> lock(bt_shared_mutex);
+        upgrade_to_unique_lock<shared_mutex> unique_lock(lock);
+        bt.insert(i);
     }
+
+    ELAPSE_END("Inserter (shared mutex)");
 }
 
-// Insert
+void searcher() {
+    ELAPSE_START;
 
-auto BM_SplayTreeInsert = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-        splay_tree<int> sp_tree;
-        fill_splay(sp_tree, count);
+    for (int i = 10000; i >= 1; i--) {
+        bt_mutex.lock();
+        bt.search(i);
+        bt_mutex.unlock();
     }
-};
 
-auto BM_RbTreeInsert = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
+    ELAPSE_END("Searcher (mutex)");
+}
 
-        struct node* rb_root = NULL;
+void searcher_shared() {
+    ELAPSE_START;
 
-        struct node *z;
-        z = (node*)malloc(sizeof(struct node));
-        z->key = 99999;
-        z->left = NULL;
-        z->right = NULL;
-        z->parent = NULL;
-        z->color = RED;
-        rb_root = insert(rb_root, z);
-
-        fill_rb(rb_root, count);
-
-        state.PauseTiming();
-        delete_one_child(rb_root);
-        state.ResumeTiming();
+    for (int i = 10000; i >= 1; i--) {
+        shared_lock<shared_mutex> lock(bt_shared_mutex);
+        bt.search(i);
     }
-};
 
-// Upsert
+    ELAPSE_END("Searcher (shared mutex)");
+}
 
-auto BM_SplayTreeUpsert = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-        splay_tree<int> sp_tree;
+void remover() {
+    ELAPSE_START;
 
-        state.PauseTiming();
-
-        fill_splay(sp_tree, count);
-
-        state.ResumeTiming();
-
-        fill_splay(sp_tree, count);
+    for (int i = 10000; i >= 1; i--) {
+        bt_mutex.lock();
+        bt.remove(i);
+        bt_mutex.unlock();
     }
-};
 
-auto BM_RbTreeUpsert = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
+    ELAPSE_END("Remover (mutex)");
+}
 
-        struct node* rb_root = NULL;
+void remover_shared() {
+    ELAPSE_START;
 
-        struct node *z;
-        z = (node*)malloc(sizeof(struct node));
-        z->key = 99999;
-        z->left = NULL;
-        z->right = NULL;
-        z->parent = NULL;
-        z->color = RED;
-        rb_root = insert(rb_root, z);
-
-        state.PauseTiming();
-
-        fill_rb(rb_root, count);
-
-        state.ResumeTiming();
-
-        fill_rb(rb_root, count);
-
-        state.PauseTiming();
-        delete_one_child(rb_root);
-        state.ResumeTiming();
+    for (int i = 10000; i >= 1; i--) {
+        upgrade_lock<shared_mutex> lock(bt_shared_mutex);
+        upgrade_to_unique_lock<shared_mutex> unique_lock(lock);
+        bt.remove(i);
     }
-};
 
-// Remove
+    ELAPSE_END("Remover (shared mutex)");
+}
 
-auto BM_SplayTreeRemove = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-        splay_tree<int> sp_tree;
+void mrmw_rl_simple() {
+    std::cout << "--- MR_MW REMOVE/LOOKUP SIMPLE: ---" << std::endl;
+    inserter(nullptr);
+    std::thread w1(remover); std::thread w2(remover);
+    std::thread r1(searcher); std::thread r2(searcher);
+    w1.join(); w2.join(); r1.join(); r2.join();
+}
 
-        state.PauseTiming();
+void mrmw_rl_shared() {
+    std::cout << "--- MR_MW REMOVE/LOOKUP SHARED: ---" << std::endl;
+    inserter(nullptr);
+    std::thread w1(remover_shared); std::thread w2(remover_shared);
+    std::thread r1(searcher_shared); std::thread r2(searcher_shared);
+    w1.join(); w2.join(); r1.join(); r2.join();
+}
 
-        fill_splay(sp_tree, count);
+void mrsw_rl_simple() {
+    std::cout << "--- MR_SW REMOVE/LOOKUP SIMPLE: ---" << std::endl;
+    inserter(nullptr);
+    std::thread w1(remover);
+    std::thread r1(searcher); std::thread r2(searcher);
+    w1.join(); r1.join(); r2.join();
+}
 
-        state.ResumeTiming();
-
-        for (auto i = 1; i < count; i++) {
-            sp_tree.erase(i);
-        }
-    }
-};
-
-auto BM_RbTreeRemove = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-
-        struct node* rb_root = NULL;
-
-        struct node *z;
-        z = (node*)malloc(sizeof(struct node));
-        z->key = 99999;
-        z->left = NULL;
-        z->right = NULL;
-        z->parent = NULL;
-        z->color = RED;
-        rb_root = insert(rb_root, z);
-
-        state.PauseTiming();
-
-        fill_rb(rb_root, count);
-
-        state.ResumeTiming();
-
-        for (auto i = 1; i < count; i++) {
-            struct node *found = bst_find(rb_root, i);
-            if (found) delete_one_child(found);
-        }
-
-        state.PauseTiming();
-        delete_one_child(rb_root);
-        state.ResumeTiming();
-    }
-};
-
-// Read
-
-auto BM_SplayTreeRead = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-        splay_tree<int> sp_tree;
-
-        state.PauseTiming();
-
-        fill_splay(sp_tree, count);
-
-        state.ResumeTiming();
-
-        for (auto i = 1; i < count; i++) {
-            sp_tree.find(i);
-        }
-    }
-};
-
-auto BM_RbTreeRead = [](benchmark::State& state, auto count) {
-    for (auto _ : state) {
-
-        struct node* rb_root = NULL;
-
-        struct node *z;
-        z = (node*)malloc(sizeof(struct node));
-        z->key = 99999;
-        z->left = NULL;
-        z->right = NULL;
-        z->parent = NULL;
-        z->color = RED;
-        rb_root = insert(rb_root, z);
-
-        state.PauseTiming();
-
-        fill_rb(rb_root, count);
-
-        state.ResumeTiming();
-
-        for (auto i = 1; i < count; i++) {
-            bst_find(rb_root, i);
-        }
-
-        state.PauseTiming();
-        delete_one_child(rb_root);
-        state.ResumeTiming();
-    }
-};
-
-// Multi-threaded
-
-splay_tree<int> sp_tree_0;
-
-auto BM_SwSr = [](benchmark::State& state, auto count, bool log_read) {
-    for (auto _ : state) {
-        if (log_read) state.PauseTiming();
-
-        if (state.thread_index == 0) {
-            for (auto i = 1; i < count; i++) {
-                sp_tree_0.insert(i);
-            }
-            if (log_read) state.ResumeTiming();
-            continue;
-        }
-
-        if (log_read) state.ResumeTiming();
-
-        if (!log_read) state.PauseTiming();
-
-        for (auto i = 1; i < count; i++) {
-            sp_tree_0.find(i);
-        }
-
-        if (!log_read) state.ResumeTiming();
-    }
-};
+void mrsw_rl_shared() {
+    std::cout << "--- MR_SW REMOVE/LOOKUP SHARED: ---" << std::endl;
+    inserter(nullptr);
+    std::thread w1(remover_shared);
+    std::thread r1(searcher_shared); std::thread r2(searcher_shared);
+    w1.join(); r1.join(); r2.join();
+}
 
 int main(int argc, char** argv) {
-    srand(time(NULL));
-
-    LEAF = (node*)malloc(sizeof(struct node));
-    LEAF->color = BLACK;
-    LEAF->left = NULL;
-    LEAF->right = NULL;
-    LEAF->key = 0;
-
-    benchmark::RegisterBenchmark("BM_SwSr_sw", BM_SwSr, 1000, false)->Threads(2);
-    benchmark::RegisterBenchmark("BM_SwSr_sr", BM_SwSr, 1000, true)->Threads(2);
-/*
-    for (auto i = 100; i <= 1000; i+=100) {
-        benchmark::RegisterBenchmark(std::string("BM_SplayTreeInsert_").append(std::to_string(i)).c_str(), BM_SplayTreeInsert, i);
-        benchmark::RegisterBenchmark(std::string("BM_RbTreeInsert_").append(std::to_string(i)).c_str(), BM_RbTreeInsert, i);
+    if (argc >= 2) {
+        mrsw_rl_shared();
+    } else {
+        mrsw_rl_simple();
     }
-
-    for (auto i = 100; i <= 1000; i+=100) {
-        benchmark::RegisterBenchmark(std::string("BM_SplayTreeUpsert_").append(std::to_string(i)).c_str(), BM_SplayTreeUpsert, i);
-        benchmark::RegisterBenchmark(std::string("BM_RbTreeUpsert_").append(std::to_string(i)).c_str(), BM_RbTreeUpsert, i);
-    }
-
-    for (auto i = 100; i <= 1000; i+=100) {
-        benchmark::RegisterBenchmark(std::string("BM_SplayTreeRemove_").append(std::to_string(i)).c_str(), BM_SplayTreeRemove, i);
-        benchmark::RegisterBenchmark(std::string("BM_RbTreeRemove_").append(std::to_string(i)).c_str(), BM_RbTreeRemove, i);
-    }
-
-    for (auto i = 100; i <= 1000; i+=100) {
-        benchmark::RegisterBenchmark(std::string("BM_SplayTreeRead_").append(std::to_string(i)).c_str(), BM_SplayTreeRead, i);
-        benchmark::RegisterBenchmark(std::string("BM_RbTreeRead_").append(std::to_string(i)).c_str(), BM_RbTreeRead, i);
-    }
-*/
-
-    benchmark::Initialize(&argc, argv);
-    benchmark::RunSpecifiedBenchmarks();
     return 0;
 }
