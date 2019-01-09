@@ -3,16 +3,20 @@
 #include <thread>
 #include <mutex>
 #include <boost/thread/shared_mutex.hpp>
+#include <boost/smart_ptr/detail/spinlock.hpp>
+#include <boost/program_options.hpp>
 #include "binary_tree.h"
 
 using boost::shared_mutex;
 using boost::shared_lock;
 using boost::upgrade_lock;
-using boost::upgrade_to_unique_lock;    
+using boost::upgrade_to_unique_lock;
+namespace bpo = boost::program_options;
 
 binary_tree bt;
 std::mutex bt_mutex;
 shared_mutex bt_shared_mutex;
+boost::detail::spinlock bt_spinlock;
 
 #define ELAPSE_START \
     struct timespec start, finish; \
@@ -51,6 +55,17 @@ void inserter_shared() {
     ELAPSE_END("Inserter (shared mutex)");
 }
 
+void inserter_spinlock() {
+    ELAPSE_START;
+
+    for (int i = 1; i <= 10000; i++) {
+        std::lock_guard<boost::detail::spinlock> guard(bt_spinlock);
+        bt.insert(i);
+    }
+
+    ELAPSE_END("Inserter (spinlock)");
+}
+
 void searcher() {
     ELAPSE_START;
 
@@ -72,6 +87,17 @@ void searcher_shared() {
     }
 
     ELAPSE_END("Searcher (shared mutex)");
+}
+
+void searcher_spinlock() {
+    ELAPSE_START;
+
+    for (int i = 10000; i >= 1; i--) {
+        std::lock_guard<boost::detail::spinlock> guard(bt_spinlock);
+        bt.search(i);
+    }
+
+    ELAPSE_END("Searcher (spinlock)");
 }
 
 void remover() {
@@ -98,43 +124,99 @@ void remover_shared() {
     ELAPSE_END("Remover (shared mutex)");
 }
 
-void mrmw_rl_simple() {
-    std::cout << "--- MR_MW REMOVE/LOOKUP SIMPLE: ---" << std::endl;
-    inserter(nullptr);
-    std::thread w1(remover); std::thread w2(remover);
-    std::thread r1(searcher); std::thread r2(searcher);
-    w1.join(); w2.join(); r1.join(); r2.join();
+void remover_spinlock() {
+    ELAPSE_START;
+
+    for (int i = 10000; i >= 1; i--) {
+        std::lock_guard<boost::detail::spinlock> guard(bt_spinlock);
+        bt.remove(i);
+    }
+
+    ELAPSE_END("Remover (spinlock)");
 }
 
-void mrmw_rl_shared() {
-    std::cout << "--- MR_MW REMOVE/LOOKUP SHARED: ---" << std::endl;
-    inserter(nullptr);
-    std::thread w1(remover_shared); std::thread w2(remover_shared);
-    std::thread r1(searcher_shared); std::thread r2(searcher_shared);
-    w1.join(); w2.join(); r1.join(); r2.join();
+enum class lock_type {
+    mutex,
+    shared,
+    spinlock
+};
+
+std::istream& operator>>(std::istream& in, lock_type& lt)
+{
+    std::string token;
+    in >> token;
+    if (token == "mutex")
+        lt = lock_type::mutex;
+    else if (token == "shared")
+        lt = lock_type::shared;
+    else if (token == "spinlock")
+        lt = lock_type::spinlock;
+    else
+        in.setstate(std::ios_base::failbit);
+    return in;
 }
 
-void mrsw_rl_simple() {
-    std::cout << "--- MR_SW REMOVE/LOOKUP SIMPLE: ---" << std::endl;
+void bench(int writers, int readers, lock_type lt) {
     inserter(nullptr);
-    std::thread w1(remover);
-    std::thread r1(searcher); std::thread r2(searcher);
-    w1.join(); r1.join(); r2.join();
-}
 
-void mrsw_rl_shared() {
-    std::cout << "--- MR_SW REMOVE/LOOKUP SHARED: ---" << std::endl;
-    inserter(nullptr);
-    std::thread w1(remover_shared);
-    std::thread r1(searcher_shared); std::thread r2(searcher_shared);
-    w1.join(); r1.join(); r2.join();
+    std::function<void()> writer;
+    switch (lt) {
+    case lock_type::mutex:
+        writer = remover;
+        break;
+    case lock_type::shared:
+        writer = remover_shared;
+        break;
+    default:
+        writer = remover_spinlock;
+        break;
+    }
+
+    std::function<void()> reader;
+    switch (lt) {
+    case lock_type::mutex:
+        reader = searcher;
+        break;
+    case lock_type::shared:
+        reader = searcher_shared;
+        break;
+    default:
+        reader = searcher_spinlock;
+        break;
+    }
+
+    std::vector<std::thread> v;
+    for (int i = 0; i < writers; ++i) {
+        v.emplace_back(writer);
+    }
+    for (int i = 0; i < readers; ++i) {
+        v.emplace_back(reader);
+    }
+
+    for (auto& t : v) {
+        t.join();
+    }
 }
 
 int main(int argc, char** argv) {
-    if (argc >= 2) {
-        mrsw_rl_shared();
-    } else {
-        mrsw_rl_simple();
-    }
+    int writers;
+    int readers;
+    lock_type lt;
+
+    bpo::options_description desc("Allowed options");
+    desc.add_options()
+        (
+            "writers", bpo::value<int>(&writers)->required(), "Count of writer threads"
+        ) (
+            "readers", bpo::value<int>(&readers)->required(), "Count of reader threads"
+        ) (
+            "lock-type", bpo::value<lock_type>(&lt)->required(), "Lock type: mutex, shared_mutex, or spinlock"
+        );
+
+    bpo::variables_map vm;
+    bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
+    bpo::notify(vm);
+
+    bench(writers, readers, lt);
     return 0;
 }

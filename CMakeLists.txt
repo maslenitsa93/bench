@@ -7,8 +7,8 @@ find_package(Threads REQUIRED)
 
 add_executable(bench main.cpp binary_tree.cpp)
 
-find_package(Boost COMPONENTS system thread REQUIRED)
+find_package(Boost COMPONENTS system thread program_options REQUIRED)
 
-target_link_libraries(bench Threads::Threads benchmark ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY})
+target_link_libraries(bench Threads::Threads benchmark ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_PROGRAM_OPTIONS_LIBRARY})
 
 set_target_properties(bench PROPERTIES CXX_STANDARD 14)
