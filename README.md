@@ -31,6 +31,7 @@ make
 
 ## 1W : 2R
 
+```
 $ ./bench --writers=1 --readers=2 --lock-type=mutex
 Searcher (mutex): 1.429424
 Remover (mutex): 1.429919
@@ -43,7 +44,9 @@ $ ./bench --writers=1 --readers=2 --lock-type=mutex
 Searcher (mutex): 1.241346
 Remover (mutex): 1.251958
 Searcher (mutex): 1.249535
+```
 
+```
 $ ./bench --writers=1 --readers=2 --lock-type=shared
 Remover (shared mutex): 0.606690
 Searcher (shared mutex): 0.615086
@@ -56,7 +59,9 @@ $ ./bench --writers=1 --readers=2 --lock-type=shared
 Remover (shared mutex): 0.770776
 Searcher (shared mutex): 0.771373
 Searcher (shared mutex): 0.772281
+```
 
+```
 $ ./bench --writers=1 --readers=2 --lock-type=spinlock
 Remover (spinlock): 1.250998
 Searcher (spinlock): 1.250999
@@ -69,9 +74,11 @@ $ ./bench --writers=1 --readers=2 --lock-type=spinlock
 Searcher (spinlock): 0.858754
 Remover (spinlock): 0.881929
 Searcher (spinlock): 0.882429
+```
 
 ## 2W : 2R
 
+```
 $ ./bench --writers=2 --readers=2 --lock-type=mutex
 Searcher (mutex): 1.768295
 Remover (mutex): 1.832583
@@ -87,7 +94,9 @@ Remover (mutex): 1.656732
 Remover (mutex): 1.657228
 Searcher (mutex): 1.657770
 Searcher (mutex): 1.657883
+```
 
+```
 $ ./bench --writers=2 --readers=2 --lock-type=shared
 Remover (shared mutex): 0.605845
 Searcher (shared mutex): 0.607761
@@ -103,7 +112,9 @@ Remover (shared mutex): 0.895521
 Searcher (shared mutex): 0.909898
 Remover (shared mutex): 0.914262
 Searcher (shared mutex): 0.912446
+```
 
+```
 $ ./bench --writers=2 --readers=2 --lock-type=spinlock
 Searcher (spinlock): 1.873267
 Remover (spinlock): 2.013843
@@ -119,9 +130,11 @@ Searcher (spinlock): 1.637800
 Remover (spinlock): 1.784516
 Searcher (spinlock): 1.784682
 Remover (spinlock): 1.784866
+```
 
 ## 2W : 1R
 
+```
 $ ./bench --writers=2 --readers=1 --lock-type=mutex
 Remover (mutex): 0.694972
 Searcher (mutex): 0.696332
@@ -134,7 +147,9 @@ $ ./bench --writers=2 --readers=1 --lock-type=mutex
 Searcher (mutex): 1.548567
 Remover (mutex): 1.579130
 Remover (mutex): 1.579397
+```
 
+```
 $ ./bench --writers=2 --readers=1 --lock-type=shared
 Remover (shared mutex): 1.294029
 Remover (shared mutex): 1.300796
@@ -147,7 +162,9 @@ $ ./bench --writers=2 --readers=1 --lock-type=shared
 Remover (shared mutex): 1.031493
 Remover (shared mutex): 1.040036
 Searcher (shared mutex): 1.048062
+```
 
+```
 $ ./bench --writers=2 --readers=1 --lock-type=spinlock
 Remover (spinlock): 0.894309
 Searcher (spinlock): 0.892175
